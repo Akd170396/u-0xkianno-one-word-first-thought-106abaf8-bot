@@ -28,11 +28,47 @@ import os
 WORD = "vellichor"
 
 
+def validate(word: str) -> None:
+    """Reject anything that is not exactly one word.
+
+    One word means: 1-60 characters, no whitespace at all (so it
+    cannot be empty, blank, or two words), and it must survive a
+    UTF-8 round-trip unchanged.
+    """
+    if not word:
+        raise ValueError(
+            "entry word must not be empty: expected exactly one word"
+        )
+    if len(word) > 60:
+        raise ValueError(
+            f"entry word must be at most 60 characters, got {len(word)}"
+        )
+    if any(ch.isspace() for ch in word):
+        raise ValueError(
+            "entry word must be a single word with no whitespace, "
+            f"got {word!r}"
+        )
+    if word.encode("utf-8").decode("utf-8") != word:
+        raise ValueError(
+            "entry word must be valid UTF-8, got undecodable bytes"
+        )
+
+
 def main() -> None:
+    validate(WORD)
     os.makedirs("/output", exist_ok=True)
     # No trailing newline: the file is exactly the word, 9 bytes.
     with open("/output/entry.txt", "w", encoding="utf-8") as f:
         f.write(WORD)
+    # Read-back verification: fail hard if what landed on disk is
+    # not exactly the validated word (catches partial writes, encoding
+    # surprises, or a wrong path before the grader ever sees it).
+    with open("/output/entry.txt", "r", encoding="utf-8") as f:
+        written = f.read()
+    if written != WORD:
+        raise RuntimeError(
+            f"read-back mismatch: wrote {WORD!r}, file holds {written!r}"
+        )
 
 
 if __name__ == "__main__":
